@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcolatore Pannelli Genetici Oncologici</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .checkbox-item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .checkbox-item:hover {
+            border-color: #007bff;
+        }
+        .checkbox-item.selected {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        .checkbox-item label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        .gene-count {
+            font-size: 12px;
+            color: #666;
+            margin-left: 25px;
+            font-weight: normal;
+        }
+        .results {
+            background-color: #e8f5e8;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #28a745;
+            margin-top: 20px;
+        }
+        .results h2 {
+            color: #155724;
+            margin-top: 0;
+        }
+        .total-genes {
+            font-size: 24px;
+            font-weight: bold;
+            color: #155724;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .gene-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border: 1px solid #ddd;
+        }
+        .gene-list h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .genes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .gene-tag {
+            background-color: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .export-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        .export-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calcolatore Pannelli Genetici Oncologici</h1>
+        
+        <div class="checkbox-group" id="checkboxGroup">
+            <!-- Le checkbox verranno generate dinamicamente -->
+        </div>
+        
+        <div class="results" id="results" style="display: none;">
+            <h2>Risultati</h2>
+            <div class="total-genes" id="totalGenes">0 geni totali</div>
+            <button class="export-btn" onclick="exportToExcel()">Esporta in Excel</button>
+            <div class="gene-list">
+                <h3>Geni da analizzare:</h3>
+                <div class="genes" id="genesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dati dei pannelli genetici basati sull'immagine
+        const geneticPanels = {
+            'Carcinoma Mammella': {
+                name: 'Carcinoma Mammella - II Livello',
+                genes: ['ATM', 'BARD1', 'CDH1', 'CHEK2', 'NF1', 'PALB2', 'PTEN', 'RAD51C', 'RAD51D', 'STK11', 'TP53']
+            },
+            'Carcinoma Ovaio - II Livello': {
+                name: 'Carcinoma Ovaio - II Livello',
+                genes: ['ATM', 'BRIP1', 'MLH1', 'MSH2', 'MSH6', 'PALB2', 'PMS2', 'RAD51C', 'RAD51D']
+            },
+            'Carcinoma Gastro-Intestinale': {
+                name: 'Carcinoma Gastro-Intestinale(include GIST)',
+                genes: ['ATM', 'APC', 'BMPR1A', 'CDH1', 'CHEK2', 'DICER1', 'EPCAM', 'KIT', 'MLH1', 'MSH2', 'MSH6', 'MUTYH', 'NF1', 'NTHL1', 'PDGFRA', 'PMS2', 'POLD1', 'POLE', 'PTEN', 'SDHB', 'SDHC', 'SMAD4', 'STK11']
+            },
+            'Neoplasie Renali(inlcude Sclerosi Tuberosa)': {
+                name: 'Neoplasie Renali(inlcude Sclerosi Tuberosa)',
+                genes: ['FH', 'FLCN', 'MET', 'TSC1', 'TSC2', 'VHL', 'WT1']
+            },
+            'Neoplasia Endocrina Multipla(include Carcinoma Midollare Della Tiroide Familiare)': {
+                name: 'Neoplasia Endocrina Multipla(include Carcinoma Midollare Della Tiroide Familiare)',
+                genes: ['CDKN1B', 'MEN1', 'RET']
+            },
+            'Sindrome di Li-Fraumeni': {
+                name: 'Sindrome di Li-Fraumeni',
+                genes: ['TP53']
+            },
+            'Neurofibromatosi di Tipo 1': {
+                name: 'Neurofibromatosi di Tipo I',
+                genes: ['NF1', 'SPRED1']
+            },
+            'Neurofibromatosi di Tipo 2/Schwannomatosi': {
+                name: 'Neurofibromatosi di Tipo 2/Schwannomatosi',
+                genes: ['NF2', 'LZTR1', 'SMARCB1']
+            },
+            'Feocromocitoma/Paraganglioma': {
+                name: 'Feocromocitoma/Paraganglioma',
+                genes: ['MAX', 'RET', 'SDHA', 'SDHAF2', 'SDHB', 'SDHC', 'SDHD', 'VHL']
+            },
+            'Retinoblastoma': {
+                name: 'Retinoblastoma',
+                genes: ['RB1']
+            },
+            'Caricnoma Pancreas': {
+                name: 'Caricnoma Pancreas',
+                genes: ['ATM', 'BRCA1', 'BRCA2', 'CDKN2A', 'EPCAM', 'MLH1', 'MSH2', 'MSH6', 'PALB2', 'PMS2', 'STK11', 'TP53']
+            },
+            'Sindorme di Gorlin e Basaliomi Multipli': {
+                name: 'Sindorme di Gorlin e Basaliomi Multipli',
+                genes: ['BAP1', 'PTCH1', 'SUFU']
+            },
+            'Melanoma Esteso': {
+                name: 'Melanoma Esteso',
+                genes: ['ACD', 'ATM', 'BAP1', 'BRCA1', 'BRCA2', 'CDK4', 'CDKN2A', 'MITF', 'POT1', 'TERF2IP', 'TERT']
+            }
+        };
+
+        // Genera le checkbox
+        function generateCheckboxes() {
+            const checkboxGroup = document.getElementById('checkboxGroup');
+            
+            Object.keys(geneticPanels).forEach(key => {
+                const panel = geneticPanels[key];
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+                
+                div.innerHTML = `
+                    <label>
+                        <input type="checkbox" value="${key}" onchange="updateResults()">
+                        ${panel.name}
+                        <div class="gene-count">${panel.genes.length} geni</div>
+                    </label>
+                `;
+                
+                checkboxGroup.appendChild(div);
+            });
+        }
+
+        // Aggiorna i risultati
+        function updateResults() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            const selectedPanels = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedPanels.length === 0) {
+                document.getElementById('results').style.display = 'none';
+                return;
+            }
+            
+            // Raccogli tutti i geni unici
+            const allGenes = new Set();
+            selectedPanels.forEach(panelKey => {
+                geneticPanels[panelKey].genes.forEach(gene => {
+                    allGenes.add(gene);
+                });
+            });
+            
+            const uniqueGenes = Array.from(allGenes).sort();
+            
+            // Aggiorna l'interfaccia
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('totalGenes').textContent = `${uniqueGenes.length} geni totali`;
+            
+            const genesList = document.getElementById('genesList');
+            genesList.innerHTML = uniqueGenes.map(gene => 
+                `<span class="gene-tag">${gene}</span>`
+            ).join('');
+            
+            // Aggiorna lo stile delle checkbox selezionate
+            document.querySelectorAll('.checkbox-item').forEach(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (checkbox.checked) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        // Esporta in Excel (simulato con CSV)
+        function exportToExcel() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            const selectedPanels = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedPanels.length === 0) {
+                alert('Seleziona almeno un pannello genetico');
+                return;
+            }
+            
+            // Raccogli tutti i geni unici
+            const allGenes = new Set();
+            selectedPanels.forEach(panelKey => {
+                geneticPanels[panelKey].genes.forEach(gene => {
+                    allGenes.add(gene);
+                });
+            });
+            
+            const uniqueGenes = Array.from(allGenes).sort();
+            
+            // Crea il contenuto CSV
+            let csvContent = "Pannelli Genetici Selezionati,Numero Geni\n";
+            selectedPanels.forEach(panelKey => {
+                csvContent += `"${geneticPanels[panelKey].name}",${geneticPanels[panelKey].genes.length}\n`;
+            });
+            
+            csvContent += `\nTotale Geni Unici,${uniqueGenes.length}\n\n`;
+            csvContent += "Geni da Analizzare\n";
+            uniqueGenes.forEach(gene => {
+                csvContent += `${gene}\n`;
+            });
+            
+            // Download del file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'pannelli_genetici_oncologici.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Inizializza la pagina
+        generateCheckboxes();
+    </script>
+</body>
+</html>
